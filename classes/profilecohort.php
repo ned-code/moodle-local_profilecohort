@@ -43,20 +43,20 @@ class profilecohort extends profilefields {
      * Get the URL of the main page for this plugin.
      * @return \core\url
      */
-    protected function get_index_url() {
+    protected function get_index_url(){
         return new \core\url('/local/profilecohort/index.php');
     }
 
     /**
      * Process the submitted rule editing form.
      */
-    public function process_form() {
-        if (!$this->get_possible_values()) {
+    public function process_form(){
+        if (!$this->get_possible_values()){
             // If there are no cohorts selected, go to the form for selecting cohorts.
             $cohorturl = new \core\url('/local/profilecohort/cohorts.php');
             redirect($cohorturl);
         }
-        if ($this->action != 'members') {
+        if ($this->action != 'members'){
             parent::process_form();
         }
     }
@@ -65,10 +65,10 @@ class profilecohort extends profilefields {
      * Output the complete form for editing profile field mapping rules.
      * @return string
      */
-    public function output_form() {
+    public function output_form(){
         $out = '';
 
-        if ($this->action == 'members') {
+        if ($this->action == 'members'){
             $out .= $this->output_members();
         } else {
             $out .= parent::output_form();
@@ -81,7 +81,7 @@ class profilecohort extends profilefields {
      * Allow subclasses to define extra tabs to be included at the top of the page.
      * @return \core\output\tabobject[]
      */
-    protected function extra_tabs() {
+    protected function extra_tabs(){
         return [
             new \core\output\tabobject('members', new \core\url($this->get_index_url(), ['action' => 'members']),
                            get_string('members', 'local_profilecohort')),
@@ -94,7 +94,7 @@ class profilecohort extends profilefields {
      * Output the cohort members list.
      * @return string
      */
-    protected function output_members() {
+    protected function output_members(){
         global $OUTPUT, $DB;
         $out = '';
 
@@ -122,21 +122,21 @@ class profilecohort extends profilefields {
         $lastcohortname = null;
         $list = '';
         $cohortmembers = [];
-        foreach ($users as $user) {
-            if ($user->cohortid != $lastcohortid) {
-                if ($lastcohortid) {
+        foreach ($users as $user){
+            if ($user->cohortid != $lastcohortid){
+                if ($lastcohortid){
                     $list .= $this->output_members_entry($lastcohortname, $cohortmembers, $lastcohortid);
                 }
                 $cohortmembers = [];
                 $lastcohortid = $user->cohortid;
                 $lastcohortname = $user->cohortname;
             }
-            if ($user->id) {
+            if ($user->id){
                 $userurl = new \core\url('/user/view.php', ['id' => $user->id]);
                 $cohortmembers[] = html_writer::link($userurl, fullname($user));
             }
         }
-        if ($lastcohortid) {
+        if ($lastcohortid){
             $list .= $this->output_members_entry($lastcohortname, $cohortmembers, $lastcohortid);
         }
 
@@ -152,7 +152,7 @@ class profilecohort extends profilefields {
      * @param int $lastcohortid
      * @return string
      */
-    private function output_members_entry($cohortname, $cohortmembers, $lastcohortid) {
+    private function output_members_entry($cohortname, $cohortmembers, $lastcohortid){
         $out = '';
 
         // Create HTML element ID from the last cohortid.
@@ -164,7 +164,7 @@ class profilecohort extends profilefields {
         $out .= html_writer::start_tag('button', ['class' => 'btn btn-link btn-block text-start ps-0', 'type' => 'button',
                 'data-toggle' => 'collapse', 'data-target' => '#'.$id, 'aria-expanded' => 'false', 'aria-controls' => $id, ]);
         $out .= format_string($cohortname);
-        if ($cohortmembers) {
+        if ($cohortmembers){
             $out .= html_writer::tag('span', get_string('countusers', 'local_profilecohort', count($cohortmembers)),
                     ['class' => 'badge bg-primary text-light ms-2']);
         } else {
@@ -176,9 +176,9 @@ class profilecohort extends profilefields {
         $out .= html_writer::end_div();
 
         // Bootstrap collapse content.
-        if ($cohortmembers) {
+        if ($cohortmembers){
             $content = '';
-            foreach ($cohortmembers as $cohortmember) {
+            foreach ($cohortmembers as $cohortmember){
                 $content .= html_writer::start_tag('li');
                 $content .= html_writer::tag('i', '', ['class' => 'fa fa-user pe-2']);
                 $content .= $cohortmember;
@@ -202,19 +202,19 @@ class profilecohort extends profilefields {
      * @param \core\event\base|null $event (optional)
      * @param int $userid (optional) mostly used by testing
      */
-    public static function set_cohorts_from_profile(?\core\event\base $event = null, $userid = null) {
+    public static function set_cohorts_from_profile(?\core\event\base $event = null, $userid = null){
         global $USER, $DB, $CFG;
         require_once($CFG->dirroot.'/cohort/lib.php');
 
-        if ($event) {
+        if ($event){
             $userid = $event->userid;
         }
-        if (!$userid) {
+        if (!$userid){
             $userid = $USER->id;
         }
 
         $allowedcohortids = array_keys(self::load_possible_values());
-        if (!$allowedcohortids) {
+        if (!$allowedcohortids){
             return; // No cohorts handled by this plugin => nothing to do.
         }
 
@@ -226,10 +226,10 @@ class profilecohort extends profilefields {
 
         $addcohortids = array_diff($newcohortids, $oldcohortids);
         $removecohortids = array_diff($oldcohortids, $newcohortids);
-        foreach ($addcohortids as $addcohortid) {
+        foreach ($addcohortids as $addcohortid){
             cohort_add_member($addcohortid, $userid);
         }
-        foreach ($removecohortids as $removecohortid) {
+        foreach ($removecohortids as $removecohortid){
             cohort_remove_member($removecohortid, $userid);
         }
     }
@@ -239,13 +239,13 @@ class profilecohort extends profilefields {
      * @param \core\event\base|null $event (optional)
      * @param int $userid (optional) mostly used by testing; overrides possible value from event
      */
-    public static function set_cohorts_from_profile_loginas(?\core\event\base $event = null, $userid = null) {
+    public static function set_cohorts_from_profile_loginas(?\core\event\base $event = null, $userid = null){
         global $USER;
 
-        if ($event && $event->relateduserid && !$userid) {
+        if ($event && $event->relateduserid && !$userid){
             // The usual case: we have received an event, and caller has not asked for specific user id.
             $userid = $event->relateduserid;
-            if ($USER->id && $userid != $USER->id) {
+            if ($USER->id && $userid != $USER->id){
                 return; // Only update the cohorts for the user as who we are logged in.
             }
         }
@@ -258,8 +258,8 @@ class profilecohort extends profilefields {
      * @param \core\event\base|null $event (optional)
      * @param int $userid (optional) mostly used by testing; overrides possible value from event
      */
-    public static function set_cohorts_from_profile_created(?\core\event\base $event = null, $userid = null) {
-        if ($event && $event->objectid && !$userid) {
+    public static function set_cohorts_from_profile_created(?\core\event\base $event = null, $userid = null){
+        if ($event && $event->objectid && !$userid){
             // We have received an event, and caller has not asked for specific user id.
             $userid = $event->objectid;
         }
@@ -272,8 +272,8 @@ class profilecohort extends profilefields {
      * @param \core\event\base|null $event (optional)
      * @param int $userid (optional) mostly used by testing; overrides possible value from event
      */
-    public static function set_cohorts_from_profile_updated(?\core\event\base $event = null, $userid = null) {
-        if ($event && $event->objectid && !$userid) {
+    public static function set_cohorts_from_profile_updated(?\core\event\base $event = null, $userid = null){
+        if ($event && $event->objectid && !$userid){
             // We have received an event, and caller has not asked for specific user id.
             $userid = $event->objectid;
         }
@@ -285,39 +285,38 @@ class profilecohort extends profilefields {
      * Load a list of possible values that fields can be mapped onto.
      * @return string[] $value => $displayname
      */
-    protected static function load_possible_values() {
+    protected static function load_possible_values(){
         global $DB;
-        $cohorts = $DB->get_records_menu('cohort', ['component' => 'local_profilecohort'], 'name', 'id, name');
-        return $cohorts;
+        return $DB->get_records_menu('cohort', ['component' => 'local_profilecohort'], 'name', 'id, name');
     }
 
     /**
      * Schedule an update of all user cohorts.
      */
-    protected function apply_all_rules() {
+    protected function apply_all_rules(){
         set_config('updatecohorts', true, 'local_profilecohort');
     }
 
     /**
      * Apply all the rules to all users on the site, updating their cohorts to match.
      */
-    public function update_all_cohorts_from_rules() {
+    public function update_all_cohorts_from_rules(){
         global $DB, $CFG;
         require_once($CFG->dirroot.'/cohort/lib.php');
 
         // Create a recordset to load the relevant user profile fields for all users.
         $fieldids = [];
-        $rules = $this->get_rules();
-        foreach ($rules as $rule) {
+        $rules = static::load_all_rules();
+        foreach ($rules as $rule){
             $fieldids[] = (int)$rule->fieldid;
         }
         $fieldids = array_unique($fieldids);
 
         $fieldsql = [];
-        foreach ($fieldids as $fieldid) {
+        foreach ($fieldids as $fieldid){
             $fieldsql[] = "(SELECT data FROM {user_info_data} WHERE fieldid = {$fieldid} AND userid = u.id) AS field_{$fieldid}";
         }
-        if ($fieldsql) {
+        if ($fieldsql){
             $fieldsql = implode(', ', $fieldsql).', ';
         } else {
             $fieldsql = '';
@@ -333,16 +332,16 @@ class profilecohort extends profilefields {
         $crs = $DB->get_recordset_list('cohort_members', 'cohortid', $allowedcohortids, 'userid', 'userid, cohortid');
 
         $cohortrec = null;
-        if ($crs->valid()) {
+        if ($crs->valid()){
             $cohortrec = $crs->current();
         }
-        foreach ($urs as $userrec) {
+        foreach ($urs as $userrec){
             // Loop through the cohort recordset to get all the old cohorts for the current user.
             $oldcohortids = [];
-            while ($cohortrec && $cohortrec->userid == $userrec->id) {
+            while ($cohortrec && $cohortrec->userid == $userrec->id){
                 $oldcohortids[] = $cohortrec->cohortid;
                 $crs->next();
-                if ($crs->valid()) {
+                if ($crs->valid()){
                     $cohortrec = $crs->current();
                 } else {
                     $cohortrec = null;
@@ -351,7 +350,7 @@ class profilecohort extends profilefields {
 
             // Prepare the fields list for the user, then apply the rules to each in turn.
             $fields = [];
-            foreach ($fieldids as $fieldid) {
+            foreach ($fieldids as $fieldid){
                 $fieldname = "field_{$fieldid}";
                 $fields[$fieldid] = $userrec->$fieldname;
             }
@@ -361,10 +360,10 @@ class profilecohort extends profilefields {
             $newcohortids = array_unique($newcohortids);
             $addcohortids = array_diff($newcohortids, $oldcohortids);
             $removecohortids = array_diff($oldcohortids, $newcohortids);
-            foreach ($addcohortids as $addcohortid) {
+            foreach ($addcohortids as $addcohortid){
                 cohort_add_member($addcohortid, $userrec->id);
             }
-            foreach ($removecohortids as $removecohortid) {
+            foreach ($removecohortids as $removecohortid){
                 cohort_remove_member($removecohortid, $userrec->id);
             }
         }
@@ -377,7 +376,7 @@ class profilecohort extends profilefields {
     /**
      * Process the form for editing which cohorts should be managed by this plugin.
      */
-    public function process_cohort_form() {
+    public function process_cohort_form(){
         global $DB;
 
         $this->action = 'cohorts';
@@ -389,27 +388,27 @@ class profilecohort extends profilefields {
         $this->form = new cohort_form(null, $custom);
 
         $redir = new \core\url('/local/profilecohort/index.php');
-        if ($this->form->is_cancelled()) {
+        if ($this->form->is_cancelled()){
             redirect($redir);
         }
-        if ($formdata = $this->form->get_data()) {
+        if ($formdata = $this->form->get_data()){
             $changed = false;
-            foreach ($allcohorts as $cohort) {
-                if ($formdata->cohort[$cohort->id]) {
-                    if ($cohort->component != 'local_profilecohort') {
+            foreach ($allcohorts as $cohort){
+                if ($formdata->cohort[$cohort->id]){
+                    if ($cohort->component != 'local_profilecohort'){
                         // Cohort selected - start managing this cohort.
                         $DB->set_field('cohort', 'component', 'local_profilecohort', ['id' => $cohort->id]);
                         $changed = true;
                     }
                 } else {
-                    if ($cohort->component == 'local_profilecohort') {
+                    if ($cohort->component == 'local_profilecohort'){
                         // Cohort deselected - stop managing this cohort.
                         $DB->set_field('cohort', 'component', '', ['id' => $cohort->id]);
                         $changed = true;
                     }
                 }
             }
-            if ($changed) {
+            if ($changed){
                 $this->apply_all_rules();
             }
             redirect($redir);
@@ -420,7 +419,7 @@ class profilecohort extends profilefields {
      * Output the form for editing which cohorts should be managed by this plugin.
      * @return string
      */
-    public function output_cohort_form() {
+    public function output_cohort_form(){
         global $OUTPUT;
 
         $out = '';

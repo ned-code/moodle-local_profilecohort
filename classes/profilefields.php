@@ -34,6 +34,8 @@ use core\output\html_writer;
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 abstract class profilefields {
+    public const DEF_PER_PAGE = 20;
+
     /** @var string the name of the database table to use */
     protected static $tablename = null;
     /** @var field_base[] */
@@ -47,24 +49,36 @@ abstract class profilefields {
     /** @var string */
     protected $action = 'view';
 
+    protected $page = 0;
+    protected $perpage = 0;
+    protected $rules_count = 0;
+
     /** @var string[] list of available actions */
     protected static $actions = ['view', 'add'];
 
     /**
      * profilefields constructor.
      */
-    public function __construct() {
+    public function __construct(){
         global $PAGE;
 
-        if (!static::$tablename) {
+        if (!static::$tablename){
             throw new \coding_exception('Must set $tablename in derived classes');
         }
         $this->action = optional_param('action', null, PARAM_ALPHA);
-        if (!in_array($this->action, static::$actions)) {
+        if (!in_array($this->action, static::$actions)){
             $this->action = 'view';
         }
-        if (!PHPUNIT_TEST && !CLI_SCRIPT) {
-            $url = new \core\url($PAGE->url, ['action' => $this->action]);
+
+        $this->perpage = static::DEF_PER_PAGE;
+        if (empty($this->perpage)){
+            $this->page = 0;
+        } else {
+            $this->page = optional_param('page', 0, PARAM_INT);
+        }
+
+        if (!PHPUNIT_TEST && !CLI_SCRIPT){
+            $url = new \core\url($PAGE->url, ['action' => $this->action, 'page' => $this->page]);
             $PAGE->set_url($url);
         }
     }
@@ -73,7 +87,7 @@ abstract class profilefields {
      * Get the URL of the main page for this plugin.
      * @return \core\url
      */
-    protected function get_index_url() {
+    protected function get_index_url(){
         global $PAGE;
         return $PAGE->url;
     }
@@ -83,32 +97,44 @@ abstract class profilefields {
        ------------------------------------------ */
 
     /**
+     * Set position for all provided rules
+     *
+     * @param field_base[] $rules
+     * @param int          $offset
+     *
+     * @return void
+     */
+    public static function sort_position($rules=[], $offset=0){
+        $i = 1 + $offset;
+        foreach ($rules as $rule){
+            $rule->set_form_position($i++);
+        }
+    }
+
+    /**
      * Process the submitted rule editing form.
      */
-    public function process_form() {
+    public function process_form(){
         global $DB, $PAGE;
 
         $rules = [];
-        if ($this->action == 'view') {
+        if ($this->action == 'view'){
             $rules = $this->get_rules();
-            if (!$rules) {
+            if (!$rules){
                 $this->action = 'add';
             } else {
-                $i = 1;
-                foreach ($rules as $rule) {
-                    $rule->set_form_position($i++);
-                }
+                static::sort_position($rules, $this->page*$this->perpage);
             }
         }
 
         $addid = null;
-        if ($this->action == 'add') {
+        if ($this->action == 'add'){
             // Add a new, empty, rule to the end of the list, if requested.
-            if ($addid = optional_param('add', null, PARAM_INT)) {
+            if ($addid = optional_param('add', null, PARAM_INT)){
                 $field = $DB->get_record('user_info_field', ['id' => $addid], 'id AS fieldid, name, datatype, param1',
                                          MUST_EXIST);
-                if ($rule = field_base::make_instance($field)) {
-                    $rules[] = $rule;
+                if ($new_rule = field_base::make_instance($field)){
+                    $rules[] = $new_rule;
                 }
             }
         }
@@ -116,29 +142,36 @@ abstract class profilefields {
         // Instantiate the form.
         $custom = [
             'rules' => $rules,
+            'page' => $this->page,
+            'perpage' => $this->perpage,
+            'rules_count' => $this->rules_count,
             'values' => $this->get_possible_values(),
         ];
         $this->form = new fields_form(null, $custom);
         $toform = ['action' => $this->action];
-        if ($addid) {
+        if ($addid){
             $toform['add'] = $addid;
         }
         $this->form->set_data($toform);
 
         // Process the form data.
-        if ($this->form->is_cancelled()) {
+        if ($this->form->is_cancelled()){
             redirect($PAGE->url);
         }
-        if ($formdata = $this->form->get_data()) {
-            $changed = $this->figure_out_sortorder($rules, $formdata);
-            foreach ($rules as $rule) {
+        if ($formdata = $this->form->get_data()){
+            $all_rules = static::load_all_rules();
+            if (isset($new_rule)){
+                $all_rules[] = $new_rule;
+            }
+            $changed = $this->figure_out_sortorder($formdata, $all_rules);
+            foreach ($all_rules as $rule){
                 $changed = $rule->update_from_form_data(static::$tablename, $formdata) || $changed;
             }
-            if ($changed) {
+            if ($changed){
                 $this->apply_all_rules();
             }
             // Always return to the 'view rules' tab when a rule has been saved successfully.
-            redirect(new \core\url($PAGE->url, ['action' => 'view']));
+            redirect(new \core\url($PAGE->url, ['action' => 'view', 'page' => $this->page]));
         }
     }
 
@@ -146,23 +179,30 @@ abstract class profilefields {
      * Look to see if any of the rules have moved up or down, then rewrite the sort order, as needed.
      * New sortorder is stored in the $formdata, to be applied by $rule->update_from_form_data()
      *
-     * @param field_base[] $rules
-     * @param object $formdata
+     * @param object       $formdata
+     * @param field_base[] $all_rules
+     *
      * @return bool true if there were any changes made
      */
-    protected function figure_out_sortorder($rules, $formdata) {
+    protected function figure_out_sortorder($formdata, $all_rules=[]){
         // Get list of rules that have moved up / down / stayed put.
-        $positions = range(1, count($rules));
+        if (empty($all_rules)){
+            $all_rules = static::load_all_rules();
+        }
+
+        static::sort_position($all_rules);
+        $r_count = count($all_rules);
+        $positions = range(1, $r_count);
         $unchanged = array_fill_keys($positions, []);
         $movedup = array_fill_keys($positions, []);
         $moveddown = array_fill_keys($positions, []);
 
         $changed = false;
-        foreach ($rules as $rule) {
-            list($dir, $position) = $rule->get_new_position($formdata);
-            if ($dir == 0) {
+        foreach ($all_rules as $rule){
+            [$dir, $position] = $rule->get_new_position($formdata);
+            if ($dir == 0){
                 $unchanged[$position][] = $rule;
-            } else if ($dir < 0) {
+            } elseif ($dir < 0){
                 $movedup[$position][] = $rule;
                 $changed = true;
             } else {
@@ -170,22 +210,22 @@ abstract class profilefields {
                 $changed = true;
             }
         }
-        if (!$changed) {
+        if (!$changed){
             return false;
         }
 
         $sortorder = 1;
         $formdata->sortorder = [];
-        for ($i = 1; $i <= count($rules); $i++) {
+        for ($i = 1; $i <= $r_count; $i++){
             // If there is more than one entry in any given position, order them by:
             // those that have moved up, then those that are unchanged, then those that have moved down.
-            foreach ($movedup[$i] as $rule) {
+            foreach ($movedup[$i] as $rule){
                 $formdata->sortorder[$rule->id] = $sortorder++;
             }
-            foreach ($unchanged[$i] as $rule) {
+            foreach ($unchanged[$i] as $rule){
                 $formdata->sortorder[$rule->id] = $sortorder++;
             }
-            foreach ($moveddown[$i] as $rule) {
+            foreach ($moveddown[$i] as $rule){
                 $formdata->sortorder[$rule->id] = $sortorder++;
             }
         }
@@ -196,7 +236,7 @@ abstract class profilefields {
      * Output the complete form for editing profile field mapping rules.
      * @return string
      */
-    public function output_form() {
+    public function output_form(){
         global $OUTPUT;
 
         $out = '';
@@ -204,17 +244,17 @@ abstract class profilefields {
         $tabs = $this->get_tabs();
         $out .= $OUTPUT->render($tabs);
 
-        if ($this->action == 'view') {
+        if ($this->action == 'view'){
             $out .= html_writer::tag('div', get_string('viewintro', 'local_profilecohort').'<br />'.
                                      get_string('invisiblecohortsnote', 'local_profilecohort'),
                                      ['id' => 'intro', 'class' => 'box generalbox']);
-        } else if ($this->action == 'add') {
+        } elseif ($this->action == 'add'){
             $out .= html_writer::tag('div', get_string('addintro', 'local_profilecohort').
                                      '<br />'.get_string('invisiblecohortsnote', 'local_profilecohort'),
                                      ['id' => 'intro', 'class' => 'box generalbox']);
         }
 
-        if (!$this->get_possible_fields()) {
+        if (!$this->get_possible_fields()){
             $profilefieldsurl = new \core\url('/user/profile/index.php');
             $link = html_writer::link($profilefieldsurl, get_string('profilefields', 'core_admin'));
             $notification = new \core\output\notification(get_string('nofields', 'local_profilecohort', $link),
@@ -224,7 +264,7 @@ abstract class profilefields {
             return $out;
         }
 
-        if ($this->action == 'add') {
+        if ($this->action == 'add'){
             $out .= $this->output_add_select();
         }
         $out .= $this->output_rules();
@@ -235,7 +275,7 @@ abstract class profilefields {
      * Allow subclasses to define extra tabs to be included at the top of the page.
      * @return \core\output\tabobject[]
      */
-    protected function extra_tabs() {
+    protected function extra_tabs(){
         return [];
     }
 
@@ -243,7 +283,7 @@ abstract class profilefields {
      * Generate tabs for the display
      * @return \core\output\tabtree
      */
-    protected function get_tabs() {
+    protected function get_tabs(){
         $tabs = [];
         $tabs[] = new \core\output\tabobject('view', new \core\url($this->get_index_url(), ['action' => 'view']),
                                  get_string('viewrules', 'local_profilecohort'));
@@ -251,16 +291,14 @@ abstract class profilefields {
                                  get_string('addrules', 'local_profilecohort'));
         $tabs = array_merge($tabs, $this->extra_tabs());
 
-        $tabtree = new \core\output\tabtree($tabs, $this->action);
-
-        return $tabtree;
+        return new \core\output\tabtree($tabs, $this->action);
     }
 
     /**
      * Generate a drop-down select for adding a new profile field mapping rule.
      * @return string
      */
-    protected function output_add_select() {
+    protected function output_add_select(){
         global $OUTPUT, $PAGE;
         $opts = $this->get_possible_fields();
         $opts = array_map('format_string', $opts);
@@ -274,14 +312,14 @@ abstract class profilefields {
      * Generate the form for editing profile field mapping rules.
      * @return string
      */
-    protected function output_rules() {
+    protected function output_rules(){
         return $this->form->render();
     }
 
     /**
      * Apply the rules to all users on the site and update cohorts as required.
      */
-    protected function apply_all_rules() {
+    protected function apply_all_rules(){
         // Nothing to do in the base class.
     }
 
@@ -298,10 +336,10 @@ abstract class profilefields {
      *                        false (default) to get only the first match
      * @return array|null|string - array if $matchall is true, null (or empty array) if no match found
      */
-    public static function get_mapped_value($userid, $matchall = false) {
+    public static function get_mapped_value($userid, $matchall = false){
         $ret = $matchall ? [] : null;
 
-        if (!$rules = self::load_rules()) {
+        if (!$rules = self::load_all_rules()){
             return $ret;
         }
         $fields = self::load_profile_fields($rules, $userid);
@@ -319,29 +357,30 @@ abstract class profilefields {
      * @param bool $matchall (optional) set to true to return all matching values
      * @return array|null|string - array if $matchall is true, null (or empty array) if no match found
      */
-    protected static function get_value_from_rules($rules, $fields, $matchall = false) {
+    protected static function get_value_from_rules($rules, $fields, $matchall = false){
         $ret = $matchall ? [] : null;
         $rule = reset($rules);
-        while ($rule) {
+        while ($rule){
             $value = $rule->get_value($fields);
-            while ($rule && $rule->should_and_next_field()) {
+            /** @noinspection PhpConditionAlreadyCheckedInspection */
+            while ($rule && $rule->should_and_next_field()){
                 $rule = next($rules);
-                if (!$rule) {
+                if (!$rule){
                     break;
                 }
-                if ($value && !$rule->matches($fields)) {
+                if ($value && !$rule->matches($fields)){
                     $value = null;
                     // Do not exit inner loop early, because we must skip all remaining AND-combined rules.
                 }
             }
-            if ($value) {
-                if ($matchall) {
+            if ($value){
+                if ($matchall){
                     $ret[] = $value;
                 } else {
                     return $value;
                 }
             }
-            if (!$rule) {
+            if (!$rule){
                 break;
             }
             $rule = next($rules);
@@ -353,17 +392,17 @@ abstract class profilefields {
      * Load all the profile fields that are used by the given rules
      *
      * @param field_base[] $rules
-     * @param int[] $userid
+     * @param int $userid
      * @return string[] $fieldid => $fieldvalue
      */
-    protected static function load_profile_fields($rules, $userid) {
+    protected static function load_profile_fields($rules, $userid){
         global $DB;
 
         $fieldids = [];
-        foreach ($rules as $rule) {
+        foreach ($rules as $rule){
             $fieldids[] = $rule->fieldid;
         }
-        list($fsql, $params) = $DB->get_in_or_equal($fieldids, SQL_PARAMS_NAMED);
+        [$fsql, $params] = $DB->get_in_or_equal($fieldids, SQL_PARAMS_NAMED);
         $params['userid'] = $userid;
         $select = "fieldid $fsql AND userid = :userid";
         return $DB->get_records_select_menu('user_info_data', $select, $params, '', 'fieldid, data');
@@ -377,8 +416,8 @@ abstract class profilefields {
      * Get the list of custom profile fields for which rules could be added.
      * @return string[] $fieldid => $fieldname
      */
-    protected function get_possible_fields() {
-        if ($this->possiblefields === null) {
+    protected function get_possible_fields(){
+        if ($this->possiblefields === null){
             $this->possiblefields = self::load_possible_fields();
         }
         return $this->possiblefields;
@@ -388,12 +427,12 @@ abstract class profilefields {
      * Load a list of custom profile fields for which rules could be added.
      * @return string[] $fieldid => $fieldname
      */
-    protected static function load_possible_fields() {
+    protected static function load_possible_fields(){
         global $DB;
         $ret = [];
         $fields = $DB->get_records('user_info_field', [], 'name', 'id, name, datatype');
-        foreach ($fields as $field) {
-            if (field_base::make_instance($field, IGNORE_MISSING)) {
+        foreach ($fields as $field){
+            if (field_base::make_instance($field, IGNORE_MISSING)){
                 $ret[$field->id] = $field->name;
             }
         }
@@ -404,8 +443,8 @@ abstract class profilefields {
      * Get a list of possible values that fields can be mapped onto.
      * @return string[] $value => $displayname
      */
-    protected function get_possible_values() {
-        if ($this->possiblevalues === null) {
+    protected function get_possible_values(){
+        if ($this->possiblevalues === null){
             $this->possiblevalues = static::load_possible_values();
         }
         return $this->possiblevalues;
@@ -415,26 +454,38 @@ abstract class profilefields {
      * Load a list of possible values that fields can be mapped onto.
      * @return string[] $value => $displayname
      */
-    protected static function load_possible_values() {
+    protected static function load_possible_values(){
         throw new \coding_exception('Must be overridden in the derived class');
     }
 
     /**
-     * Get all the profile field rules for the site.
+     * Get all the profile field rules for one provided page
+     *
      * @return field_base[]
      */
-    protected function get_rules() {
-        if ($this->rules === null) {
-            $this->rules = self::load_rules();
+    protected function get_rules(){
+        if ($this->rules === null){
+            $rules = self::load_all_rules();
+            $this->rules_count = count($rules);
+            if ($this->perpage > 0){
+                $max_page = ceil($this->rules_count / $this->perpage);
+                $this->page = min($this->page, $max_page);
+                $this->rules = array_slice($rules, $this->page * $this->perpage, $this->perpage);
+            } else {
+                $this->page = 0;
+                $this->rules = $rules;
+            }
+
         }
         return $this->rules;
     }
 
     /**
-     * Load all the profile field rules for the site.
+     * Load ALL the profile field rules for the site
+     *
      * @return field_base[]
      */
-    protected static function load_rules() {
+    protected static function load_all_rules(){
         global $DB;
 
         $rules = [];
@@ -443,28 +494,15 @@ abstract class profilefields {
                   FROM {{$tablename}} m
                   JOIN {user_info_field} f ON f.id = m.fieldid
                  ORDER BY m.sortorder";
-        foreach ($DB->get_recordset_sql($sql) as $ruledata) {
-            if ($rule = field_base::make_instance($ruledata, IGNORE_MISSING)) {
-                $rules[] = $rule;
+        $possible = static::load_possible_values();
+        foreach ($DB->get_recordset_sql($sql) as $ruledata){
+            if ($rule = field_base::make_instance($ruledata, IGNORE_MISSING)){
+                if (array_key_exists($rule->value, $possible)){
+                    $rules[] = $rule;
+                }
             }
         }
-
-        static::remove_invalid_rules($rules);
 
         return $rules;
-    }
-
-    /**
-     * Check the rules are valid.
-     * @param field_base[] $rules
-     */
-    protected static function remove_invalid_rules(&$rules) {
-        $possible = static::load_possible_values();
-        foreach ($rules as $idx => $rule) {
-            if (!array_key_exists($rule->value, $possible)) {
-                // Remove the invalid rule from the list, but do not delete it (as it may become valid again later).
-                unset($rules[$idx]);
-            }
-        }
     }
 }

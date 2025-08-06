@@ -38,27 +38,35 @@ require_once($CFG->libdir.'/formslib.php');
  */
 class fields_form extends moodleform {
 
-    /**
-     * Return the current list of rules.
-     * @return field_base[]
-     */
-    private function get_rules() {
-        return $this->_customdata['rules'];
-    }
+    /** @var field_base[]  */
+    protected $_rules = [];
+    /** @var string[] */
+    protected $_values = [];
+    protected $_page = 0;
+    protected $_perpage = 0;
+    protected $_rules_count = 0;
 
     /**
-     * Return the possible values that could be assigned as a result of the rules matching.
-     * @return string[]
+     * Init params from custom data
+     *
+     * @return void
      */
-    private function get_values() {
-        return $this->_customdata['values'];
+    protected function _init(){
+        $_d = $this->_customdata;
+        $this->_rules = $_d['rules'];
+        $this->_values = $_d['values'];
+        $this->_page = $_d['page'];
+        $this->_perpage = $_d['perpage'];
+        $this->_rules_count = $_d['rules_count'];
     }
 
     /**
      * Form definition. Abstract method - always override!
      */
-    protected function definition() {
-        global $PAGE;
+    protected function definition(){
+        global $PAGE, $OUTPUT;
+
+        $this->_init();
 
         $mform = $this->_form;
 
@@ -66,17 +74,31 @@ class fields_form extends moodleform {
         $mform->setType('add', PARAM_INT);
         $mform->addElement('hidden', 'action', null);
         $mform->setType('action', PARAM_ALPHA);
+        $mform->addElement('hidden', 'page', $this->_page);
+        $mform->setType('page', PARAM_INT);
 
-        $values = [null => get_string('choosedots')] + $this->get_values();
-        $rules = $this->get_rules();
-        foreach ($rules as $rule) {
-            $rule->add_form_field($mform, $values, count($rules));
+        $show_pagingbar = $this->_perpage > 0;
+        if ($show_pagingbar){
+            $pagingbar = new \paging_bar($this->_rules_count, $this->_page, $this->_perpage, $PAGE->url, 'page');
+            $pagingbar_html = $OUTPUT->render($pagingbar);
+            $mform->addElement('html', $pagingbar_html);
         }
 
-        $mform->addElement('html', '<div class="mt-3">&nbsp;</div>'); // This is just used to add some space above.
+        $values = [null => get_string('choosedots')] + $this->_values;
+        foreach ($this->_rules as $rule){
+            $rule->add_form_field($mform, $values, $this->_rules_count);
+        }
+
+        if ($show_pagingbar && !empty($pagingbar_html)){
+            $mform->addElement('html', $pagingbar_html);
+        }
         $this->add_action_buttons();
 
-        $PAGE->requires->js_call_amd('local_profilecohort/reorder', 'init');
+        /**
+         * Script 'reorder' doesn't work normal with pagination
+         * If you remove pagination, you can try to return script again
+         */
+        //$PAGE->requires->js_call_amd('local_profilecohort/reorder', 'init');
     }
 
     /**
@@ -87,9 +109,9 @@ class fields_form extends moodleform {
      * @return array of "element_name"=>"error_description" if there are errors,
      *         or an empty array if everything is OK (true allowed for backwards compatibility too).
      */
-    public function validation($data, $files) {
+    public function validation($data, $files){
         $errors = parent::validation($data, $files);
-        foreach ($this->get_rules() as $rule) {
+        foreach ($this->_rules as $rule){
             $err = $rule->validation($data);
             $errors = array_merge($errors, $err);
         }

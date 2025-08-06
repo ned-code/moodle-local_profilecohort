@@ -39,10 +39,10 @@ class field_checkbox extends field_base {
      * @param string $id
      * @return \HTML_QuickForm_element[]
      */
-    protected function add_form_field_internal(MoodleQuickForm $mform, $id) {
+    protected function add_form_field_internal(MoodleQuickForm $mform, $id){
         // Override the matchvalue with the matchtype, if the match type is one of the 'defined' ones.
         $matchvalue = $this->matchvalue;
-        if (in_array($this->matchtype, [self::MATCH_NOTDEFINED, self::MATCH_ISDEFINED])) {
+        if (in_array($this->matchtype, [self::MATCH_NOTDEFINED, self::MATCH_ISDEFINED])){
             $matchvalue = $this->matchtype;
         }
         $opts = [
@@ -68,10 +68,10 @@ class field_checkbox extends field_base {
      * @param object $formdata
      * @return bool has the rule changed?
      */
-    public function update_from_form_data($tablename, $formdata) {
+    public function update_from_form_data($tablename, $formdata){
         // Extract the 'defined/not defined' type from the values select.
         $id = $this->get_form_id();
-        if (in_array($formdata->matchvalue[$id], [self::MATCH_NOTDEFINED, self::MATCH_ISDEFINED])) {
+        if (in_array($formdata->matchvalue[$id], [self::MATCH_NOTDEFINED, self::MATCH_ISDEFINED])){
             $formdata->matchtype[$id] = $formdata->matchvalue[$id];
             $formdata->matchvalue[$id] = null;
         } else {

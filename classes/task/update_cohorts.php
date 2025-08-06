@@ -38,7 +38,7 @@ class update_cohorts extends \core\task\scheduled_task {
      * Get a descriptive name for this task (shown to admins).
      * @return string
      */
-    public function get_name() {
+    public function get_name(){
         return get_string('updatecohorts', 'local_profilecohort');
     }
 
@@ -46,8 +46,8 @@ class update_cohorts extends \core\task\scheduled_task {
      * Do the job.
      * Throw exceptions on errors (the job will be retried).
      */
-    public function execute() {
-        if (get_config('local_profilecohort', 'updatecohorts')) {
+    public function execute(){
+        if (get_config('local_profilecohort', 'updatecohorts')){
             $manager = new profilecohort();
             $manager->update_all_cohorts_from_rules();
             set_config('updatecohorts', false, 'local_profilecohort');

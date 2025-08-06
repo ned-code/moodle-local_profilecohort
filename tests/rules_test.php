@@ -38,7 +38,7 @@ final class rules_test extends \advanced_testcase {
     /** @var int[] ids of the cohorts to use in the testing */
     protected $cohortids = [];
     /** The name of the table storing the rule definitions. */
-    const TABLENAME = 'local_profilecohort';
+    public const TABLENAME = 'local_profilecohort';
 
     /**
      * Sets up the fixture, for example, open a network connection.
@@ -50,7 +50,7 @@ final class rules_test extends \advanced_testcase {
 
         // Create some custom profile fields to work with.
         $catid = $DB->get_field('user_info_category', 'MIN(id)', []);
-        if (!$catid) {
+        if (!$catid){
             $ins = (object) ['name' => 'Other fields', 'sortorder' => 1];
             $catid = $DB->insert_record('user_info_category', $ins);
         }
@@ -61,7 +61,7 @@ final class rules_test extends \advanced_testcase {
             'textfield' => ['name' => 'Text field', 'datatype' => 'text'],
             'textareafield' => ['name' => 'Text area field', 'datatype' => 'textarea'],
         ];
-        foreach ($fieldinfo as $shortname => $info) {
+        foreach ($fieldinfo as $shortname => $info){
             $ins = (object) array_merge($sharedinfo, $info);
             $ins->shortname = $shortname;
             $this->fieldids[$shortname] = $DB->insert_record('user_info_field', $ins);
@@ -270,7 +270,7 @@ final class rules_test extends \advanced_testcase {
             'matchvalue' => ['new' => 'Opt 2', $rule1->id => $rule1->matchvalue],
             'value' => ['new' => $this->cohortids[1], $rule1->id => $rule1->value],
         ];
-        foreach ($rules as $updrule) {
+        foreach ($rules as $updrule){
             $updrule->update_from_form_data(self::TABLENAME, $formdata);
         }
         $rules = test_profilecohort::test_load_rules();
@@ -294,7 +294,7 @@ final class rules_test extends \advanced_testcase {
             'matchvalue' => [$rule1->id => 'teting updated', $rule2->id => $rule2->matchvalue],
             'value' => [$rule1->id => $this->cohortids[2], $rule2->id => $rule2->value],
         ];
-        foreach ($rules as $updrule) {
+        foreach ($rules as $updrule){
             $updrule->update_from_form_data(self::TABLENAME, $formdata);
         }
         $rules = test_profilecohort::test_load_rules();
@@ -318,7 +318,7 @@ final class rules_test extends \advanced_testcase {
             'matchvalue' => [$rule1->id => 'teting updated', $rule2->id => $rule2->matchvalue],
             'value' => [$rule1->id => $this->cohortids[2], $rule2->id => $rule2->value],
         ];
-        foreach ($rules as $updrule) {
+        foreach ($rules as $updrule){
             $updrule->update_from_form_data(self::TABLENAME, $formdata);
         }
         $rules = test_profilecohort::test_load_rules();
@@ -811,8 +811,8 @@ abstract class test_profilecohort extends profilecohort {
      * Expose the results of the protected 'load_rules' function.
      * @return field_base[]
      */
-    public static function test_load_rules() {
-        return self::load_rules();
+    public static function test_load_rules(){
+        return self::load_all_rules();
     }
 }
 

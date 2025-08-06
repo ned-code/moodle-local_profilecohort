@@ -97,11 +97,11 @@ abstract class field_base {
     /**
      * Match if the field is defined.
      */
-    const MATCH_ISDEFINED = '!!defined!!';
+    public const MATCH_ISDEFINED = '!!defined!!';
     /**
      * Match if the field is NOT defined.
      */
-    const MATCH_NOTDEFINED = '!!notdefined!!';
+    public const MATCH_NOTDEFINED = '!!notdefined!!';
 
     /**
      * Creates a new instance of a rule to hold the given data.
@@ -112,10 +112,10 @@ abstract class field_base {
      * @return field_base|null
      * @throws \coding_exception
      */
-    public static function make_instance($ruledata, $strictness = MUST_EXIST) {
+    public static function make_instance($ruledata, $strictness = MUST_EXIST){
         $classname = __NAMESPACE__.'\field_'.$ruledata->datatype;
-        if (!class_exists($classname)) {
-            if ($strictness == MUST_EXIST) {
+        if (!class_exists($classname)){
+            if ($strictness == MUST_EXIST){
                 throw new \coding_exception('Non-existent rule type');
             }
             return null;
@@ -127,10 +127,10 @@ abstract class field_base {
      * field_base constructor.
      * @param object $ruledata (optional)
      */
-    protected function __construct($ruledata = null) {
-        if ($ruledata) {
-            foreach (array_merge(self::$fields, self::$extrafields) as $field) {
-                if (isset($ruledata->$field)) {
+    protected function __construct($ruledata = null){
+        if ($ruledata){
+            foreach (array_merge(self::$fields, self::$extrafields) as $field){
+                if (isset($ruledata->$field)){
                     $this->$field = $ruledata->$field;
                 }
             }
@@ -141,7 +141,7 @@ abstract class field_base {
      * The position on the form that this rule is currently being displayed at.
      * @param int $position
      */
-    public function set_form_position($position) {
+    public function set_form_position($position){
         $this->formposition = $position;
     }
 
@@ -150,19 +150,19 @@ abstract class field_base {
      * @param object $formdata the data returned by the form
      * @return array [$dir, $newposition] where $dir is 0, -1, +1 for unchanged, moved up, moved down
      */
-    public function get_new_position($formdata) {
+    public function get_new_position($formdata){
         $id = $this->get_form_id();
-        if (!empty($formdata->delete[$id])) {
+        if (!empty($formdata->delete[$id])){
             return [0, $this->formposition];
         }
-        if (!isset($formdata->moveto[$id])) {
+        if (!isset($formdata->moveto[$id])){
             return [0, $this->formposition];
         }
         $moveto = $formdata->moveto[$id];
         $dir = 0;
-        if ($moveto < $this->formposition) {
+        if ($moveto < $this->formposition){
             $dir = -1;
-        } else if ($moveto > $this->formposition) {
+        } elseif ($moveto > $this->formposition){
             $dir = 1;
         }
         return [$dir, $moveto];
@@ -172,8 +172,8 @@ abstract class field_base {
      * Get the ID to use for the form elements.
      * @return int|string
      */
-    protected function get_form_id() {
-        if ($this->id) {
+    protected function get_form_id(){
+        if ($this->id){
             return $this->id;
         }
         return 'new';
@@ -187,32 +187,32 @@ abstract class field_base {
      * @param object $formdata
      * @return bool has the rule changed?
      */
-    public function update_from_form_data($tablename, $formdata) {
+    public function update_from_form_data($tablename, $formdata){
         $id = $this->get_form_id();
 
-        if (!empty($formdata->delete[$id])) {
+        if (!empty($formdata->delete[$id])){
             $this->delete($tablename);
             return true;
         }
 
         $changed = false;
-        foreach (self::$fields as $field) {
-            if ($field == 'id') {
+        foreach (self::$fields as $field){
+            if ($field == 'id'){
                 continue;
             }
-            if (!isset($formdata->$field)) {
+            if (!isset($formdata->$field)){
                 continue;
             }
             $values = $formdata->$field;
-            if (!array_key_exists($id, $values)) {
+            if (!array_key_exists($id, $values)){
                 continue;
             }
-            if ($this->$field != $values[$id]) {
+            if ($this->$field != $values[$id]){
                 $this->$field = $values[$id];
                 $changed = true;
             }
         }
-        if ($changed) {
+        if ($changed){
             $this->save($tablename);
         }
         return $changed;
@@ -222,14 +222,14 @@ abstract class field_base {
      * Save the rule into the database.
      * @param string $tablename the table to save the rule in
      */
-    public function save($tablename) {
+    public function save($tablename){
         global $DB;
 
         $ins = new stdClass();
-        foreach (self::$fields as $field) {
+        foreach (self::$fields as $field){
             $ins->$field = $this->$field;
         }
-        if ($this->id) {
+        if ($this->id){
             $ins->id = $this->id;
             $DB->update_record($tablename, $ins);
         } else {
@@ -244,9 +244,9 @@ abstract class field_base {
      * Delete the rule from the database.
      * @param string $tablename the table to delete the rule from
      */
-    public function delete($tablename) {
+    public function delete($tablename){
         global $DB;
-        if (!$this->id) {
+        if (!$this->id){
             return;
         }
         $DB->delete_records($tablename, ['id' => $this->id]);
@@ -259,8 +259,8 @@ abstract class field_base {
      * @return mixed
      * @throws \coding_exception
      */
-    public function __get($name) {
-        if (!in_array($name, self::$fields)) {
+    public function __get($name){
+        if (!in_array($name, self::$fields)){
             throw new \coding_exception("Attempting to access unknown field $name");
         }
         return $this->$name;
@@ -272,11 +272,11 @@ abstract class field_base {
      * @param mixed $value
      * @throws \coding_exception
      */
-    public function __set($name, $value) {
-        if (!in_array($name, self::$fields)) {
+    public function __set($name, $value){
+        if (!in_array($name, self::$fields)){
             throw new \coding_exception("Attempting to set unknown field $name");
         }
-        if ($name == 'id') {
+        if ($name == 'id'){
             throw new \coding_exception("Cannot update id field directly");
         }
         $this->$name = $value;
@@ -286,7 +286,7 @@ abstract class field_base {
      * Should this field be combined with the next field?
      * @return bool
      */
-    public function should_and_next_field() {
+    public function should_and_next_field(){
         return (bool)$this->andnextrule;
     }
 
@@ -295,11 +295,11 @@ abstract class field_base {
      * @param array $fields
      * @return bool
      */
-    public function matches($fields) {
-        if (isset($fields[$this->fieldid])) {
-            if ($this->matchtype == self::MATCH_ISDEFINED) {
+    public function matches($fields){
+        if (isset($fields[$this->fieldid])){
+            if ($this->matchtype == self::MATCH_ISDEFINED){
                 return true;
-            } else if ($this->matchtype == self::MATCH_NOTDEFINED) {
+            } elseif ($this->matchtype == self::MATCH_NOTDEFINED){
                 return false;
             }
             return $this->matches_internal($fields[$this->fieldid]);
@@ -312,8 +312,8 @@ abstract class field_base {
      * @param string[] $fields $fieldid => $fieldvalue
      * @return null|string
      */
-    public function get_value($fields) {
-        if ($this->matches($fields)) {
+    public function get_value($fields){
+        if ($this->matches($fields)){
             return $this->value;
         }
         return null;
@@ -324,7 +324,7 @@ abstract class field_base {
      * @param string $value
      * @return bool
      */
-    protected function matches_internal($value) {
+    protected function matches_internal($value){
         return ($value == $this->matchvalue);
     }
 
@@ -334,7 +334,7 @@ abstract class field_base {
      * @param array $values the full list of values this could be mapped onto
      * @param int $rulecount
      */
-    public function add_form_field(MoodleQuickForm $mform, $values, $rulecount) {
+    public function add_form_field(MoodleQuickForm $mform, $values, $rulecount){
         $id = $this->get_form_id();
         $mform->addElement('hidden', "fieldid[$id]", $this->fieldid);
         $mform->setType("fieldid[$id]", PARAM_INT);
@@ -347,10 +347,10 @@ abstract class field_base {
         $mform->setDefault("value[$id]", $this->value);
 
         $prefix = '';
-        if ($this->id) {
+        if ($this->id){
             $actiongroup = [];
             $actiongroup[] = $mform->createElement('static', '', '', '<br><div class="localprofile-rule-actions">');
-            if ($rulecount > 1) {
+            if ($rulecount > 1){
                 $moveopts = range(1, $rulecount);
                 $moveopts = array_combine($moveopts, $moveopts);
                 $actiongroup[] = $mform->createElement('static', "movelabel[$id]", '', get_string('moveto', 'local_profilecohort'));
@@ -375,7 +375,7 @@ abstract class field_base {
         $name = $prefix.get_string('iffield', 'local_profilecohort', format_string($this->name));
         $mform->addElement('html', '<div class="localprofile-fieldwrapper">');
         $mform->addGroup($group, "group-$id", $name, ' ', false);
-        if (isset($actiongroup)) {
+        if (isset($actiongroup)){
             $mform->addGroup($actiongroup, "actiongroup-$id", '', ' ', false);
         }
         $mform->addElement('html', '</div>');
@@ -394,15 +394,15 @@ abstract class field_base {
      * @param array $formdata
      * @return array $formfieldname => $errormessage
      */
-    public function validation($formdata) {
+    public function validation($formdata){
         $id = $this->get_form_id();
         $errors = $this->validation_internal($formdata, $id);
-        if (empty($formdata['value'][$id])) {
+        if (empty($formdata['value'][$id])){
             $errors["value[$id]"] = get_string('required');
         }
         // Error messages don't show up properly for grouped elements, so add the message
         // to the group itself, instead.
-        if ($errors) {
+        if ($errors){
             $errors = ["group-$id" => get_string('required')];
         }
         return $errors;
@@ -414,7 +414,7 @@ abstract class field_base {
      * @param string $id the form identifier for this rule
      * @return array $formfieldname => $errormessage
      */
-    protected function validation_internal($formdata, $id) {
+    protected function validation_internal($formdata, $id){
         return [];
     }
 }

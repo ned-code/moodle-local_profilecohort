@@ -41,7 +41,7 @@ class cohort_form extends \moodleform {
     /**
      * Form definition.
      */
-    protected function definition() {
+    protected function definition(){
         $mform = $this->_form;
         $cohorts = $this->_customdata['cohorts'];
 
@@ -49,13 +49,13 @@ class cohort_form extends \moodleform {
                                                      get_string('invisiblecohortsnote', 'local_profilecohort'),
                                                      ['id' => 'intro', 'class' => 'box generalbox']));
 
-        if (!$cohorts) {
+        if (!$cohorts){
             $cohorturl = new \core\url('/cohort/index.php');
             $link = html_writer::link($cohorturl, get_string('cohorts', 'core_cohort'));
             $mform->addElement('html', html_writer::tag('div', get_string('nocohorts', 'local_profilecohort', $link),
                                                          ['class' => 'alert alert-warning']));
         } else {
-            foreach ($cohorts as $cohort) {
+            foreach ($cohorts as $cohort){
                 $mform->addElement('advcheckbox', "cohort[$cohort->id]", null, format_string($cohort->name));
                 $mform->setDefault("cohort[$cohort->id]", ($cohort->component == 'local_profilecohort'));
             }

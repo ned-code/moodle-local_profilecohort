@@ -36,27 +36,27 @@ class field_text extends field_base {
     /**
      * Field must match the value exactly.
      */
-    const MATCH_EXACT = 'exact';
+    public const MATCH_EXACT = 'exact';
     /**
      * Field must contain the value.
      */
-    const MATCH_CONTAINS = 'contains';
+    public const MATCH_CONTAINS = 'contains';
     /**
      * Field must not match the value.
      */
-    const MATCH_NOTEXACT = 'notexact';
+    public const MATCH_NOTEXACT = 'notexact';
     /**
      * Field must not contain the value.
      */
-    const MATCH_NOTCONTAINS = 'notcontains';
+    public const MATCH_NOTCONTAINS = 'notcontains';
     /**
      * Field is empty.
      */
-    const MATCH_EMPTY = 'empty';
+    public const MATCH_EMPTY = 'empty';
     /**
      * Field is not empty.
      */
-    const MATCH_NOTEMPTY = 'notempty';
+    public const MATCH_NOTEMPTY = 'notempty';
 
     /**
      * @var string[] list of valid match types for this field.
@@ -72,9 +72,9 @@ class field_text extends field_base {
      * field_text constructor.
      * @param object $ruledata (optional)
      */
-    protected function __construct($ruledata = null) {
+    protected function __construct($ruledata = null){
         parent::__construct($ruledata);
-        if (!in_array($this->matchtype, self::$matchtypes)) {
+        if (!in_array($this->matchtype, self::$matchtypes)){
             $this->matchtype = self::MATCH_EXACT;
         }
     }
@@ -84,24 +84,17 @@ class field_text extends field_base {
      * @param string $value
      * @return bool
      */
-    protected function matches_internal($value) {
+    protected function matches_internal($value){
         $value = strtolower(trim(strip_tags($value)));
         $matchvalue = strtolower(trim($this->matchvalue));
-        switch ($this->matchtype) {
-            case self::MATCH_NOTEXACT:
-                return ($value != $matchvalue);
-            case self::MATCH_CONTAINS:
-                return (strpos($value, $matchvalue) !== false);
-            case self::MATCH_NOTCONTAINS:
-                return (strpos($value, $matchvalue) === false);
-            case self::MATCH_EMPTY:
-                return strlen($value) == 0;
-            case self::MATCH_NOTEMPTY:
-                return strlen($value) > 0;
-            case self::MATCH_EXACT:
-            default:
-                return ($value == $matchvalue);
-        }
+        return match ($this->matchtype) {
+            self::MATCH_NOTEXACT => ($value != $matchvalue),
+            self::MATCH_CONTAINS => (str_contains($value, $matchvalue)),
+            self::MATCH_NOTCONTAINS => (!str_contains($value, $matchvalue)),
+            self::MATCH_EMPTY => strlen($value) == 0,
+            self::MATCH_NOTEMPTY => strlen($value) > 0,
+            default => ($value == $matchvalue),
+        };
     }
 
     /**
@@ -110,9 +103,9 @@ class field_text extends field_base {
      * @param string $id
      * @return \HTML_QuickForm_element[]
      */
-    protected function add_form_field_internal(MoodleQuickForm $mform, $id) {
+    protected function add_form_field_internal(MoodleQuickForm $mform, $id){
         $matchopts = [];
-        foreach (self::$matchtypes as $matchtype) {
+        foreach (self::$matchtypes as $matchtype){
             $strmatchtype = 'match_'.str_replace('!', '', $matchtype);
             $matchopts[$matchtype] = get_string($strmatchtype, 'local_profilecohort');
         }
@@ -139,13 +132,13 @@ class field_text extends field_base {
      * @param string $id the form identifier for this rule
      * @return array $formfieldname => $errormessage
      */
-    protected function validation_internal($formdata, $id) {
+    protected function validation_internal($formdata, $id){
         $errors = [];
         if (!in_array($formdata['matchtype'][$id], [
                 self::MATCH_ISDEFINED, self::MATCH_NOTDEFINED,
                 self::MATCH_EMPTY, self::MATCH_NOTEMPTY,
-        ])) {
-            if (empty($formdata['matchvalue'][$id])) {
+        ])){
+            if (empty($formdata['matchvalue'][$id])){
                 $errors["matchvalue[$id]"] = get_string('required');
             }
         }

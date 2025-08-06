@@ -40,9 +40,9 @@ class field_menu extends field_base {
      * field_menu constructor.
      * @param object $ruledata (optional)
      */
-    protected function __construct($ruledata = null) {
+    protected function __construct($ruledata = null){
         parent::__construct($ruledata);
-        if ($this->param1) {
+        if ($this->param1){
             $this->opts = explode("\n", $this->param1);
             $this->opts = array_filter(array_map('trim', $this->opts));
             $this->opts = array_combine($this->opts, $this->opts);
@@ -60,10 +60,10 @@ class field_menu extends field_base {
      * @param string $id
      * @return \HTML_QuickForm_element[]
      */
-    protected function add_form_field_internal(MoodleQuickForm $mform, $id) {
+    protected function add_form_field_internal(MoodleQuickForm $mform, $id){
         // Override the matchvalue with the matchtype, if the match type is one of the 'defined' ones.
         $matchvalue = $this->matchvalue;
-        if (in_array($this->matchtype, [self::MATCH_NOTDEFINED, self::MATCH_ISDEFINED])) {
+        if (in_array($this->matchtype, [self::MATCH_NOTDEFINED, self::MATCH_ISDEFINED])){
             $matchvalue = $this->matchtype;
         }
 
@@ -83,9 +83,9 @@ class field_menu extends field_base {
      * @param string $id the form identifier for this rule
      * @return array $formfieldname => $errormessage
      */
-    protected function validation_internal($formdata, $id) {
+    protected function validation_internal($formdata, $id){
         $errors = [];
-        if (empty($formdata['matchvalue'][$id])) {
+        if (empty($formdata['matchvalue'][$id])){
             $errors["matchvalue[$id]"] = get_string('required');
         }
         return $errors;
@@ -99,14 +99,16 @@ class field_menu extends field_base {
      * @param object $formdata
      * @return bool has the rule changed?
      */
-    public function update_from_form_data($tablename, $formdata) {
+    public function update_from_form_data($tablename, $formdata){
         // Extract the 'defined/not defined' type from the values select.
         $id = $this->get_form_id();
-        if (in_array($formdata->matchvalue[$id], [self::MATCH_NOTDEFINED, self::MATCH_ISDEFINED])) {
-            $formdata->matchtype[$id] = $formdata->matchvalue[$id];
-            $formdata->matchvalue[$id] = null;
-        } else {
-            $formdata->matchtype[$id] = null;
+        if (isset($formdata->matchvalue[$id])){
+            if (in_array($formdata->matchvalue[$id], [self::MATCH_NOTDEFINED, self::MATCH_ISDEFINED])){
+                $formdata->matchtype[$id] = $formdata->matchvalue[$id];
+                $formdata->matchvalue[$id] = null;
+            } else {
+                $formdata->matchtype[$id] = null;
+            }
         }
 
         return parent::update_from_form_data($tablename, $formdata);
